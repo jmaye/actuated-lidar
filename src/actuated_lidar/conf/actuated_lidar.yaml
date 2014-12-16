@@ -1,0 +1,13 @@
+sensor:
+  device_name: "Dynamixel controller"
+  serial_port_device_name: "/dev/ttyUSB0"
+  serial_port_baud_rate: 1000000
+  motor_id: 1
+joint_state_publisher:
+  topic: "joint_state"
+  queue_size: 100
+  freq_tol_percentage: 0.1
+  frame_id: "dynamixel"
+ros:
+  retry_timeout: 1.0
+  acquisition_loop_rate: 40.0
