@@ -1,3 +1,9 @@
+actuated-lidar (0.1-2) trusty; urgency=medium
+
+  * Some more stuff 
+
+ -- Jerome Maye <jerome.maye@mavt.ethz.ch>  Tue, 16 Dec 2014 17:40:26 +0100
+
 actuated-lidar (0.1-1) trusty; urgency=medium
 
   * First commit

@@ -1,6 +1,12 @@
 <launch>
-  <node name="dynamixel" pkg="dynamixel" type="dynamixel_node" output="screen"
-      respawn="true">
-    <rosparam command="load" file="$(find dynamixel)/etc/dynamixel.yaml"/>
+  <arg name="fixed_frame" default="world"/>
+  <arg name="scan_topic" default="/hokuyo/scan"/>
+  <arg name="max_scans" default="400"/>
+
+  <node name="actuated_lidar_assembler" pkg="laser_assembler"
+      type="laser_scan_assembler" output="screen" respawn="true">
+    <remap from="scan" to="$(arg scan_topic)"/>
+    <param name="max_scans" value="$(arg max_scans)"/>
+    <param name="fixed_frame" value="$(arg fixed_frame)"/>
   </node>
 </launch>
