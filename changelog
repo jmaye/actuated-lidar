@@ -1,3 +1,9 @@
+actuated-lidar (0.1-3) trusty; urgency=medium
+
+  * Some more launch stuff 
+
+ -- Jerome Maye <jerome.maye@mavt.ethz.ch>  Wed, 17 Dec 2014 10:18:51 +0100
+
 actuated-lidar (0.1-2) trusty; urgency=medium
 
   * Some more stuff 
