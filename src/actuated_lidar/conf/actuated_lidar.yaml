@@ -1,13 +1,20 @@
-sensor:
-  device_name: "Dynamixel controller"
-  serial_port_device_name: "/dev/ttyUSB0"
-  serial_port_baud_rate: 1000000
-  motor_id: 1
-joint_state_publisher:
-  topic: "joint_state"
+assemble_scan_service_client:
+  name: "assemble_scans"
+joint_state_subscriber:
+  topic: "/dynamixel/joint_state"
   queue_size: 100
-  freq_tol_percentage: 0.1
-  frame_id: "dynamixel"
+point_cloud_publisher:
+  topic: "point_cloud"
+  queue_size: 100
+  publish_point_cloud_2: true
+dynamixel:
+  start_position: 0.0
+  moving_speed: 0.1
+  min_angle: -1.57079632679
+  max_angle: 1.57079632679
+set_moving_speed_service_client:
+  name: "/dynamixel/set_moving_speed"
+set_angle_limits_service_client:
+  name: "/dynamixel/set_angle_limits"
 ros:
-  retry_timeout: 1.0
-  acquisition_loop_rate: 40.0
+  loop_rate: 1.0

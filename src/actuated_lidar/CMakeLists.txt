@@ -1,1 +1,1 @@
-remake_add_directories(conf launch)
+remake_add_directories(bin conf launch lib)

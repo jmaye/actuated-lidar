@@ -13,23 +13,39 @@
   </node>
 
   <!--Laser assembler-->
-  <arg name="assembler_fixed_frame" default="world"/>
-  <arg name="lidar_scan_topic" default="/hokuyo/scan"/>
+  <arg name="assembler_fixed_frame" default="dynamixel"/>
+  <arg name="lidar_scan_topic" default="/scan"/>
   <arg name="assembler_max_scans" default="400"/>
   <node name="laser_assembler" pkg="laser_assembler" type="laser_scan_assembler"
       output="screen" respawn="true">
-    <remap from="scan" to="$(arg lidar_scan_topic)"/>
     <param name="max_scans" value="$(arg assembler_max_scans)"/>
     <param name="fixed_frame" value="$(arg assembler_fixed_frame)"/>
   </node>
 
   <!--Dynamixel node-->
+  <arg name="dynamixel_serial_port_device_name" default="/dev/ttyUSB0"/>
+  <arg name="dynamixel_baud_rate" default="1000000"/>
+  <arg name="dynamixel_motor_id" default="1"/>
+  <arg name="dynamixel_frame_id" default="dynamixel"/>
   <node name="dynamixel" pkg="dynamixel" type="dynamixel_node" output="screen"
       respawn="true">
+    <param name="sensor/serial_port_device_name"
+      value="$(arg dynamixel_serial_port_device_name)"/>
+    <param name="sensor/serial_port_baud_rate"
+      value="$(arg dynamixel_baud_rate)"/>
+    <param name="sensor/motor_id" value="$(arg dynamixel_motor_id)"/>
+    <param name="joint_state_publisher/frame_id"
+      value="$(arg dynamixel_frame_id)"/>
   </node>
 
   <!--Actuator node-->
-<!--  <node name="dynamixel" pkg="dynamixel" type="dynamixel_node" output="screen"-->
-<!--      respawn="true">-->
-<!--  </node>-->
+  <node name="actuated_lidar" pkg="actuated_lidar" type="actuated_lidar_node"
+      output="screen" respawn="true">
+  </node>
+
+  <!--Static transform between Dynamixel and Hokuyo-->
+    <node name="dynamixel2hokuyo" pkg="tf2_ros"
+      type="static_transform_publisher"
+      args="0.0 0.0 0.3 0.0 0.70710678118 0.0 -0.70710678118
+      $(arg dynamixel_frame_id)_servo $(arg lidar_frame_id)"/>
 </launch>
