@@ -10,8 +10,8 @@ point_cloud_publisher:
 dynamixel:
   start_position: 0.0
   moving_speed: 0.1
-  min_angle: -1.57079632679
-  max_angle: 1.57079632679
+  angle: 1.57079632679
+  tolerance: 0.003068711
 set_moving_speed_service_client:
   name: "/dynamixel/set_moving_speed"
 set_angle_limits_service_client:

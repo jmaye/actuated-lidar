@@ -1,3 +1,9 @@
+actuated-lidar (0.1-5) trusty; urgency=medium
+
+  * New features 
+
+ -- Jerome Maye <jerome.maye@mavt.ethz.ch>  Tue, 23 Dec 2014 16:54:08 +0100
+
 actuated-lidar (0.1-4) trusty; urgency=medium
 
   * Adding the actuator node 

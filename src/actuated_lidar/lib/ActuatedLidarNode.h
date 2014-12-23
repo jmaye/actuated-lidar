@@ -104,10 +104,10 @@ namespace actuated_lidar {
     double startPosition_;
     /// Velocity of the servo
     double movingSpeed_;
-    /// Minimum angle of the servo
-    double minAngle_;
-    /// Maximum angle of the servo
-    double maxAngle_;
+    /// Angle to move on both sides of the starting position
+    double angle_;
+    /// Tolerance for the servo
+    double tolerance_;
     /// ROS set goal position service client
     ros::ServiceClient setGoalPositionServiceClient_;
     /// ROS set goal position service client name
@@ -124,6 +124,8 @@ namespace actuated_lidar {
     bool setInitialPosition_;
     /// Servo has reached the initial position and is ready
     bool initialized_;
+    /// Rotates positive
+    bool positiveRotation_;
     /** @}
       */
 
