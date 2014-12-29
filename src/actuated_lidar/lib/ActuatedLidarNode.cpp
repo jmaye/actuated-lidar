@@ -20,16 +20,14 @@
 
 #include <cmath>
 
-#include <ros/rate.h>
-
 #include <angles/angles.h>
 
+#include <laser_assembler/AssembleScans2.h>
 #include <laser_assembler/AssembleScans.h>
 
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/PointCloud.h>
 
-#include <dynamixel/SetGoalPosition.h>
 #include <dynamixel/SetMovingSpeed.h>
 #include <dynamixel/SetAngleLimits.h>
 
@@ -41,7 +39,7 @@ namespace actuated_lidar {
 
   ActuatedLidarNode::ActuatedLidarNode(const ros::NodeHandle& nh) :
       nodeHandle_(nh),
-      setInitialPosition_(true),
+      wheelMode_(false),
       initialized_(false) {
     // retrieve configurable parameters
     getParameters();
@@ -60,12 +58,14 @@ namespace actuated_lidar {
       &ActuatedLidarNode::jointStateSubscriberCallback, this);
 
     // init services
-    assembleScansServiceClient_ =
-      nodeHandle_.serviceClient<laser_assembler::AssembleScans>(
-      assembleScansServiceClientName_);
-    setGoalPositionServiceClient_ =
-      nodeHandle_.serviceClient<dynamixel::SetGoalPosition>(
-      setGoalPositionServiceClientName_);
+    if (publishPointCloud2_)
+      assembleScansServiceClient_ =
+        nodeHandle_.serviceClient<laser_assembler::AssembleScans2>(
+        assembleScansServiceClientName_);
+    else
+      assembleScansServiceClient_ =
+        nodeHandle_.serviceClient<laser_assembler::AssembleScans>(
+        assembleScansServiceClientName_);
     setMovingSpeedServiceClient_ =
       nodeHandle_.serviceClient<dynamixel::SetMovingSpeed>(
       setMovingSpeedServiceClientName_);
@@ -79,58 +79,13 @@ namespace actuated_lidar {
 /******************************************************************************/
 
   void ActuatedLidarNode::spin() {
-    ros::Rate loopRate(loopRate_);
-    while (nodeHandle_.ok()) {
-      if (setInitialPosition_) {
-        ROS_INFO_STREAM_NAMED("actuated_lidar_node",
-          "Setting initial position");
-        if (ros::service::exists(setAngleLimitsServiceClientName_, false)) {
-          dynamixel::SetAngleLimits srv;
-          srv.request.cw_angle_limit = 0.0;
-          srv.request.ccw_angle_limit = 2 * M_PI;
-          if (!setAngleLimitsServiceClient_.call(srv)) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node",
-              "setAngleLimitsServiceClient: service call failed");
-            continue;
-          }
-          else if (!srv.response.response) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
-            continue;
-          }
-        }
-        if (ros::service::exists(setGoalPositionServiceClientName_, false)) {
-          dynamixel::SetGoalPosition srv;
-          srv.request.goal_position = startPosition_;
-          srv.request.moving_speed = movingSpeed_;
-          srv.request.torque_limit = 1.0;
-          if (!setGoalPositionServiceClient_.call(srv)) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node",
-              "setGoalPositionServiceClient: service call failed");
-            continue;
-          }
-          else if (!srv.response.response) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
-            continue;
-          }
-          else {
-            ROS_INFO_STREAM_NAMED("actuated_lidar_node",
-              "Initial position command sent: " << startPosition_);
-            setInitialPosition_ = false;
-          }
-        }
-      }
-      ros::spinOnce();
-      loopRate.sleep();
-    }
+    ros::spin();
   }
 
   void ActuatedLidarNode::getParameters() {
-    // Miscellaneous ROS parameters
-    nodeHandle_.param<double>("ros/loop_rate", loopRate_, 1.0);
-
     // Laser assembler service client parameters
     nodeHandle_.param<std::string>("assemble_scan_service_client/name",
-      assembleScansServiceClientName_, "assemble_scans");
+      assembleScansServiceClientName_, "assemble_scans2");
 
     // Joint state subscriber parameters
     nodeHandle_.param<std::string>("joint_state_subscriber/topic",
@@ -146,10 +101,6 @@ namespace actuated_lidar {
     nodeHandle_.param<bool>("point_cloud_publisher/publish_point_cloud_2",
       publishPointCloud2_, true);
 
-    // Set goal position service client parameters
-    nodeHandle_.param<std::string>("set_goal_positio_service_client/name",
-      setGoalPositionServiceClientName_, "/dynamixel/set_goal_position");
-
     // Set moving speed service client parameters
     nodeHandle_.param<std::string>("set_moving_speed_service_client/name",
       setMovingSpeedServiceClientName_, "/dynamixel/set_moving_speed");
@@ -159,75 +110,129 @@ namespace actuated_lidar {
       setAngleLimitsServiceClientName_, "/dynamixel/set_angle_limits");
 
     /// Dynamixel parameters
-    nodeHandle_.param<double>("dynamixel/start_position", startPosition_, 0.0);
     nodeHandle_.param<double>("dynamixel/moving_speed", movingSpeed_, 0.1);
-    nodeHandle_.param<double>("dynamixel/angle", angle_, M_PI / 4.0);
-    nodeHandle_.param<double>("dynamixel/tolerance", tolerance_, 0.003068711);
+    nodeHandle_.param<double>("dynamixel/min_angle", minAngle_, -M_PI / 4.0);
+    nodeHandle_.param<double>("dynamixel/max_angle", maxAngle_, M_PI / 4.0);
+    if (minAngle_ >= maxAngle_) {
+      ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+        "Minimum angle should be smaller than maximum angle (min=" << minAngle_
+        << ", max=" << maxAngle_ << "). Setting default values.");
+      minAngle_ = -M_PI / 4.0;
+      maxAngle_ = M_PI / 4.0;
+    }
   }
 
   void ActuatedLidarNode::jointStateSubscriberCallback(const
       sensor_msgs::JointStateConstPtr& msg) {
-    const auto position = msg->position[0];
-    if (!initialized_) {
-      const auto error = std::fabs(angles::shortest_angular_distance(
-        startPosition_, position));
-      if (error <= tolerance_) {
-        ROS_INFO_STREAM_NAMED("actuated_lidar_node",
-          "Initial position reached: " << startPosition_);
-        if (ros::service::exists(setAngleLimitsServiceClientName_, false)) {
-          dynamixel::SetAngleLimits srv;
-          srv.request.cw_angle_limit = 0.0;
-          srv.request.ccw_angle_limit = 0.0;
-          if (!setAngleLimitsServiceClient_.call(srv)) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node",
-              "setAngleLimitsServiceClient: service call failed");
-            return;
-          }
-          else if (!srv.response.response) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
-            return;
-          }
+    if (!wheelMode_) {
+      if (ros::service::exists(setAngleLimitsServiceClientName_, false)) {
+        dynamixel::SetAngleLimits srv;
+        srv.request.cw_angle_limit = 0.0;
+        srv.request.ccw_angle_limit = 0.0;
+        if (!setAngleLimitsServiceClient_.call(srv)) {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+            "setAngleLimitsServiceClient: service call failed");
+          return;
         }
-        if (ros::service::exists(setMovingSpeedServiceClientName_, false)) {
-          dynamixel::SetMovingSpeed srv;
-          srv.request.moving_speed = movingSpeed_;
-          srv.request.torque_limit = 1.0;
-          if (!setMovingSpeedServiceClient_.call(srv)) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node",
-              "setMovingSpeedServiceClient: service call failed");
-            return;
-          }
-          else if (!srv.response.response) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
-            return;
-          }
+        else if (!srv.response.response) {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
+          return;
         }
-        initialized_ = true;
-        positiveRotation_ = true;
+        else {
+          wheelMode_ = true;
+          ROS_INFO_STREAM_NAMED("actuated_lidar_node", "Wheel mode set");
+        }
+      }
+      else {
+        ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+          "setAngleLimitsServiceClient not available");
+        return;
       }
     }
-    else {
-      if ((std::fabs(angles::shortest_angular_distance(position,
-          startPosition_ + angle_)) < tolerance_ && positiveRotation_) ||
-          (std::fabs(angles::shortest_angular_distance(position,
-          startPosition_ - angle_)) < tolerance_ && !positiveRotation_)) {
-        if (ros::service::exists(setMovingSpeedServiceClientName_, false)) {
-          positiveRotation_ = !positiveRotation_;
-          dynamixel::SetMovingSpeed srv;
-          srv.request.moving_speed = positiveRotation_? movingSpeed_ :
-            -movingSpeed_;
-          srv.request.torque_limit = 1.0;
-          if (!setMovingSpeedServiceClient_.call(srv)) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node",
-              "setMovingSpeedServiceClient: service call failed");
-            return;
-          }
-          else if (!srv.response.response) {
-            ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
-            return;
-          }
+    if (!initialized_) {
+      if (ros::service::exists(setMovingSpeedServiceClientName_, false)) {
+        dynamixel::SetMovingSpeed srv;
+        srv.request.moving_speed = movingSpeed_;
+        srv.request.torque_limit = 1.0;
+        if (!setMovingSpeedServiceClient_.call(srv)) {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+            "setMovingSpeedServiceClient: service call failed");
+          return;
+        }
+        else if (!srv.response.response) {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
+          return;
+        }
+        else {
+          initialized_ = true;
+          positiveRotation_ = true;
+          oldPositiveRotation_ = true;
+          lastDirectionChange_ = ros::Time(0, 0);
+          ROS_INFO_STREAM_NAMED("actuated_lidar_node", "Servo initialized");
         }
       }
+      else {
+        ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+          "setMovingSpeedServiceClient not available");
+        return;
+      }
+    }
+    const auto position = angles::normalize_angle(msg->position[0]);
+    if (position > maxAngle_ || position < minAngle_) {
+      oldPositiveRotation_ = positiveRotation_;
+      positiveRotation_ = position < minAngle_;
+      if (ros::service::exists(setMovingSpeedServiceClientName_, false)) {
+        dynamixel::SetMovingSpeed srv;
+        srv.request.moving_speed = positiveRotation_? movingSpeed_ :
+          -movingSpeed_;
+        srv.request.torque_limit = 1.0;
+        if (!setMovingSpeedServiceClient_.call(srv)) {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+            "setMovingSpeedServiceClient: service call failed");
+          return;
+        }
+        else if (!srv.response.response) {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node", srv.response.message);
+          return;
+        }
+      }
+      else {
+        ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+          "setMovingSpeedServiceClient not available");
+        return;
+      }
+    }
+    if (positiveRotation_ != oldPositiveRotation_) {
+      if (!lastDirectionChange_.isZero()) {
+        if (ros::service::exists(assembleScansServiceClientName_, false)) {
+          if (publishPointCloud2_) {
+            laser_assembler::AssembleScans2 srv;
+            srv.request.begin = lastDirectionChange_;
+            srv.request.end = ros::Time::now();
+            if (!assembleScansServiceClient_.call(srv))
+              ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+                "assembleScansServiceClient: service call failed");
+            else
+              pointCloudPublisher_.publish(srv.response.cloud);
+          }
+          else {
+            laser_assembler::AssembleScans srv;
+            srv.request.begin = lastDirectionChange_;
+            srv.request.end = ros::Time::now();
+            if (!assembleScansServiceClient_.call(srv))
+              ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+                "assembleScansServiceClient: service call failed");
+            else
+              pointCloudPublisher_.publish(srv.response.cloud);
+          }
+        }
+        else {
+          ROS_WARN_STREAM_NAMED("actuated_lidar_node",
+            "assembleScansServiceClient not available");
+        }
+      }
+      lastDirectionChange_ = ros::Time::now();
+      oldPositiveRotation_ = positiveRotation_;
     }
   }
 

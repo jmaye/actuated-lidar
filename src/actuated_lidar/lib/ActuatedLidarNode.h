@@ -80,8 +80,6 @@ namespace actuated_lidar {
       */
     /// ROS node handle
     ros::NodeHandle nodeHandle_;
-    /// Loop rate
-    double loopRate_;
     /// ROS laser assembler service client
     ros::ServiceClient assembleScansServiceClient_;
     /// ROS laser assembler service client name
@@ -100,18 +98,12 @@ namespace actuated_lidar {
     int pointCloudPublisherQueueSize_;
     /// Use sensor_msgs/PointCloud2
     bool publishPointCloud2_;
-    /// Start position of the servo
-    double startPosition_;
     /// Velocity of the servo
     double movingSpeed_;
-    /// Angle to move on both sides of the starting position
-    double angle_;
-    /// Tolerance for the servo
-    double tolerance_;
-    /// ROS set goal position service client
-    ros::ServiceClient setGoalPositionServiceClient_;
-    /// ROS set goal position service client name
-    std::string setGoalPositionServiceClientName_;
+    /// Minimum angle of the servo
+    double minAngle_;
+    /// Maximum angle of the servo
+    double maxAngle_;
     /// ROS set moving speed service client
     ros::ServiceClient setMovingSpeedServiceClient_;
     /// ROS set moving speed service client name
@@ -120,12 +112,16 @@ namespace actuated_lidar {
     ros::ServiceClient setAngleLimitsServiceClient_;
     /// ROS set angle limits service client name
     std::string setAngleLimitsServiceClientName_;
-    /// Set the servo to the initial position
-    bool setInitialPosition_;
-    /// Servo has reached the initial position and is ready
+    /// Servo in wheel mode
+    bool wheelMode_;
+    /// Servo initialized
     bool initialized_;
     /// Rotates positive
     bool positiveRotation_;
+    /// Cache of positive rotation
+    bool oldPositiveRotation_;
+    /// Last time of direction change
+    ros::Time lastDirectionChange_;
     /** @}
       */
 

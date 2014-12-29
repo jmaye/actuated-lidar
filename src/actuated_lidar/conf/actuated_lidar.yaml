@@ -1,5 +1,5 @@
 assemble_scan_service_client:
-  name: "assemble_scans"
+  name: "assemble_scans2"
 joint_state_subscriber:
   topic: "/dynamixel/joint_state"
   queue_size: 100
@@ -8,13 +8,10 @@ point_cloud_publisher:
   queue_size: 100
   publish_point_cloud_2: true
 dynamixel:
-  start_position: 0.0
   moving_speed: 0.1
-  angle: 1.57079632679
-  tolerance: 0.003068711
+  min_angle: -1.57079632679
+  max_angle: 1.57079632679
 set_moving_speed_service_client:
   name: "/dynamixel/set_moving_speed"
 set_angle_limits_service_client:
   name: "/dynamixel/set_angle_limits"
-ros:
-  loop_rate: 1.0
