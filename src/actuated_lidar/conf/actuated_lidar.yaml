@@ -1,5 +1,5 @@
 assemble_scan_service_client:
-  name: "assemble_scans2"
+  name: "/assemble_scans2"
 joint_state_subscriber:
   topic: "/dynamixel/joint_state"
   queue_size: 100

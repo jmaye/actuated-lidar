@@ -85,7 +85,7 @@ namespace actuated_lidar {
   void ActuatedLidarNode::getParameters() {
     // Laser assembler service client parameters
     nodeHandle_.param<std::string>("assemble_scan_service_client/name",
-      assembleScansServiceClientName_, "assemble_scans2");
+      assembleScansServiceClientName_, "/assemble_scans2");
 
     // Joint state subscriber parameters
     nodeHandle_.param<std::string>("joint_state_subscriber/topic",

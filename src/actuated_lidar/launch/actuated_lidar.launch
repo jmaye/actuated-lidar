@@ -12,16 +12,6 @@
     <param name="intensity" value="$(arg lidar_intensity)"/>
   </node>
 
-  <!--Laser assembler-->
-  <arg name="assembler_fixed_frame" default="dynamixel"/>
-  <arg name="lidar_scan_topic" default="/scan"/>
-  <arg name="assembler_max_scans" default="400"/>
-  <node name="laser_assembler" pkg="laser_assembler" type="laser_scan_assembler"
-      output="screen" respawn="true">
-    <param name="max_scans" value="$(arg assembler_max_scans)"/>
-    <param name="fixed_frame" value="$(arg assembler_fixed_frame)"/>
-  </node>
-
   <!--Dynamixel node-->
   <arg name="dynamixel_serial_port_device_name" default="/dev/ttyUSB0"/>
   <arg name="dynamixel_baud_rate" default="1000000"/>
@@ -36,11 +26,33 @@
     <param name="sensor/motor_id" value="$(arg dynamixel_motor_id)"/>
     <param name="joint_state_publisher/frame_id"
       value="$(arg dynamixel_frame_id)"/>
+    <param name="ros/retry_timeout" value="0.2"/>
   </node>
 
   <!--Actuator node-->
+  <arg name="actuated_lidar_moving_speed" default="0.1"/>
+  <arg name="actuated_lidar_min_angle" default="-1.57079632679"/>
+  <arg name="actuated_lidar_max_angle" default="1.57079632679"/>
   <node name="actuated_lidar" pkg="actuated_lidar" type="actuated_lidar_node"
       output="screen" respawn="true">
+    <param name="dynamixel/moving_speed"
+      value="$(arg actuated_lidar_moving_speed)"/>
+    <param name="dynamixel/min_angle" value="$(arg actuated_lidar_min_angle)"/>
+    <param name="dynamixel/max_angle" value="$(arg actuated_lidar_max_angle)"/>
+  </node>
+
+  <!--Laser assembler-->
+  <arg name="assembler_fixed_frame" default="$(arg dynamixel_frame_id)"/>
+  <arg name="lidar_scan_topic" default="/scan"/>
+  <!--The following is valid for 0.1 rad/s and [-pi/2, pi/2]-->
+  <arg name="assembler_max_scans" default="1280"/>
+  <arg name="assembler_tf_cache_time_secs" default="32"/>
+  <node name="laser_assembler" pkg="laser_assembler" type="laser_scan_assembler"
+      output="screen" respawn="true">
+    <param name="max_scans" value="$(arg assembler_max_scans)"/>
+    <param name="fixed_frame" value="$(arg assembler_fixed_frame)"/>
+    <param name="tf_cache_time_secs"
+      value="$(arg assembler_tf_cache_time_secs)"/>
   </node>
 
   <!--Static transform between Dynamixel and Hokuyo-->

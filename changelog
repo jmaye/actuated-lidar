@@ -1,3 +1,9 @@
+actuated-lidar (0.1-7) trusty; urgency=medium
+
+  * Corrected the service call failure 
+
+ -- Jerome Maye <jerome.maye@mavt.ethz.ch>  Mon, 05 Jan 2015 12:15:56 +0100
+
 actuated-lidar (0.1-6) trusty; urgency=medium
 
   * Working draft 
